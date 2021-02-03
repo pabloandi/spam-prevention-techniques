@@ -34,7 +34,7 @@ Route::post('/posts', function () {
     );
 
     return $post;
-})->middleware('auth', 'check.spam');
+})->middleware('auth', 'honeypot');
 
 Route::get('/dashboard', function () {
     return view('dashboard');
