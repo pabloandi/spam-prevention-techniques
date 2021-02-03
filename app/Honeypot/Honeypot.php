@@ -2,46 +2,58 @@
 
 namespace App\Honeypot;
 
-use Closure;
 use Illuminate\Http\Request;
 
 class Honeypot
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
-     * @return mixed
-     */
-    public function handle(Request $request, Closure $next)
-    {
-        if(! config('honeypot.enabled')){
-            return $next($request);
-        }
+    protected $request;
 
-        if(! $request->has(config('honeypot.field_name'))){
-            return $this->abort();
-        }
+    static public $response;
 
-        if(! empty($request->get(config('honeypot.field_name')))) {
-            return $this->abort();
-        }
-
-        if($this->timeToSubmitForm($request) <= config('honeypot.minimum_time')){
-            return $this->abort();
-        }
-
-        return $next($request);
+    public function __construct(Request $request) {
+        $this->request = $request;
     }
 
-    protected function timeToSubmitForm(Request $request) : float
+    public function enabled()
     {
-        return (microtime(true) - $request->get(config('honeypot.field_time_name')));
+        return config('honeypot.enabled');
     }
 
-    protected function abort()
+    public function detect()
     {
+        if(! $this->enabled()){
+            return false;
+        }
+
+        if(! $this->request->has(config('honeypot.field_name'))) {
+            return true;
+        }
+
+        if(! empty($this->request->get(config('honeypot.field_name')))) {
+            return true;
+        }
+
+        if($this->timeToSubmitForm() <= config('honeypot.minimum_time')) {
+            return true;
+        }
+    }
+
+    public function abort()
+    {
+        if (static::$response){
+            return call_user_func(static::$response);
+        }
+
         return abort(422, 'Spam detected.');
+    }
+
+    public static function abortUsing(callable $response)
+    {
+        static::$response = $response;
+    }
+
+    protected function timeToSubmitForm() : float
+    {
+        return (microtime(true) - $this->request->get(config('honeypot.field_time_name')));
     }
 }

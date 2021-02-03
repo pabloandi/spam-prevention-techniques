@@ -15,6 +15,10 @@ class HoneypotServiceProvider extends ServiceProvider
 
     public function boot()
     {
+        $this->app->singleton(Honeypot::class, function(){
+            return new Honeypot($this->app['request']);
+        });
+
         Blade::component('honeypot', HoneypotComponent::class);
     }
 }
